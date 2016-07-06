@@ -67,7 +67,7 @@ public class IndexController {
 	}
 	
 	/**
-	 * @Title: getPageMessage test
+	 * @Title: getPageMessage test1
 	 * @Description: 封装私有方法
 	 * @param:    
 	 * @return: PageMessage
