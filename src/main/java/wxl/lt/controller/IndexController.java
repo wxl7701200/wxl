@@ -67,7 +67,7 @@ public class IndexController {
 	}
 	
 	/**
-	 * @Title: getPageMessage 判断用户登陆
+	 * @Title: getPageMessage
 	 * @Description: 封装私有方法
 	 * @param:    
 	 * @return: PageMessage
