@@ -1,454 +1,725 @@
-# JHWOP 项目代码分析报告
+# jhwop 项目代码分析报告
 
-## 一、项目简介
+## 项目简介
 
-本项目 **jhwop**（GroupId: `com.jhw`，ArtifactId: `jhwop`，版本 `0.0.1-SNAPSHOT`）是一个基于 **Spring MVC + Hibernate + MySQL** 的 Java Web 应用，打包为 WAR 文件部署于 Servlet 容器（如 Tomcat）。项目提供用户注册与登录功能，前端采用 Ace Admin 模板（基于 Bootstrap），通过 AJAX 与后端 RESTful 风格的 JSON 接口通信。
+**jhwop**（GroupId: `com.jhw`, ArtifactId: `jhwop`, 版本: `0.0.1-SNAPSHOT`）是一个基于 **Spring MVC 3.2.4 + Hibernate 4.2.5 + MySQL** 经典 SSH 架构的 Java Web 用户管理系统，打包方式为 WAR。项目由 **@wxlHonest**（袁友林）开发，提供用户注册、登录、会话管理等功能。前端使用 **Ace Admin**（Bootstrap 3）管理模板，通过 jQuery AJAX 与后端 JSON 接口交互。
 
-源码作者包括 **wxlHonest**（主要开发）与 **袁友林**（基础工具类、实体基类），项目处于早期开发阶段（快照版本），注释主要为中英文混合。IDE 配置显示为 Eclipse（`.settings/` 目录），构建工具为 Maven。
+项目使用 Maven 构建，Java 1.7 编译目标，开发 IDE 为 Eclipse（保留 `.settings/` 目录）。数据源采用 Alibaba Druid 连接池，并集成了阿里云消息队列 ONS、Apache POI 报表、Apache Axis WebService、Barcode4J 条形码等扩展组件。包扫描路径为 `wxl.lt`。
 
-> **数据库名称**: `lt`，连接地址 `jdbc:mysql://localhost:3306/lt`。
-
----
-
-## 二、技术栈
-
-| 层次 | 技术 | 版本 |
-|------|------|------|
-| **Java** | JDK | 1.7 |
-| **Web 框架** | Spring MVC | 3.2.4.RELEASE |
-| **IoC 容器** | Spring Core / Beans / Context | 3.2.4.RELEASE |
-| **ORM** | Hibernate (JPA 注解) | 4.2.5.Final |
-| **数据库** | MySQL | 5.x (驱动 5.1.29) |
-| **连接池** | Alibaba Druid | 1.0.2 |
-| **事务管理** | Spring AOP + HibernateTransactionManager | 3.2.4.RELEASE |
-| **视图层** | JSP / JSTL | Servlet 3.0 / JSTL 1.2 |
-| **前端框架** | Bootstrap + Ace Admin + jQuery | Bootstrap 3.x / jQuery 2.0.3 |
-| **JSON** | Jackson (codehaus) | 1.9.11 |
-| **JSON 辅助** | Gson | 2.2.2 |
-| **日志** | Log4j + SLF4J | Log4j 1.2.17 / SLF4J 1.6.6 |
-| **文件上传** | Commons FileUpload | 1.2.2 |
-| **Excel** | Apache POI | 3.14-beta1 |
-| **HTTP 客户端** | Apache HttpClient | 4.3 |
-| **WebService** | Apache Axis | 1.4 |
-| **条形码** | Barcode4j | 2.0 |
-| **消息队列** | Aliyun ONS Client | 1.2.1 |
-| **单元测试** | JUnit | 4.11 |
-| **构建工具** | Maven | 3.x |
+同时仓库中包含配套前端工程 `ant-design-vue-jeecg/`（基于 Ant Design Vue 的 JEECG 低代码平台前端）和 JEECG-Boot 原始后端代码备份 `original/`（未参与构建）。
 
 ---
 
-## 三、完整目录树
+## 技术栈
+
+| 类别 | 技术 | 版本号 | 说明 |
+|------|------|--------|------|
+| **核心框架** | Spring MVC | 3.2.4.RELEASE | Web 层控制器与 REST 接口 |
+| | Spring Core | 3.2.4.RELEASE | IoC 容器核心 |
+| | Spring Beans | 3.2.4.RELEASE | Bean 工厂与管理 |
+| | Spring Context | 3.2.4.RELEASE | 应用上下文 |
+| | Spring Context Support | 3.2.4.RELEASE | 扩展支持（Quartz、邮件等） |
+| | Spring Expression | 3.2.4.RELEASE | SpEL 表达式语言 |
+| | Spring Web | 3.2.4.RELEASE | Web 支持组件 |
+| | Spring JDBC | 3.2.4.RELEASE | JDBC 抽象层 |
+| | Spring ORM | 3.2.4.RELEASE | ORM 集成支持 |
+| | Spring Test | 3.2.4.RELEASE | 单元测试支持 |
+| **AOP** | AspectJ Weaver | 1.7.1 | Spring AOP 织入 |
+| **ORM** | Hibernate Core | 4.2.5.Final | ORM 核心引擎 |
+| | Hibernate EntityManager | 4.2.5.Final | JPA EntityManager 实现 |
+| | Hibernate Ehcache | 4.2.5.Final | 二级缓存支持 |
+| | Hibernate JPA 2.0 API | 1.0.1.Final | JPA 注解 API |
+| **数据库** | MySQL Connector/J | 5.1.29 | JDBC 驱动 |
+| **连接池** | Alibaba Druid | 1.0.2 | 数据库连接池与 SQL 监控 |
+| **JSON 序列化** | Jackson (Codehaus) | 1.9.11 | Spring MVC JSON 消息转换 |
+| | Google Gson | 2.2.2 | JSON 解析处理 |
+| **日志** | Log4j | 1.2.17 | 日志实现（⚠️ 已停止维护） |
+| | SLF4J API | 1.6.6 | 日志门面 |
+| | SLF4J-Log4j12 | 1.6.6 | SLF4J → Log4j 桥接 |
+| **Servlet** | javax.servlet | 3.0-alpha-1 | Servlet API（scope: provided） |
+| | JSP API | 2.1 | JSP 支持（scope: provided） |
+| | JSTL | 1.2 | JSP 标准标签库 |
+| **文件操作** | commons-fileupload | 1.2.2 | 文件上传组件 |
+| | commons-io | 2.4 | IO 工具库 |
+| | commons-codec | 1.7 | 编解码工具 |
+| **HTTP 客户端** | Apache HttpClient | 4.3 | HTTP 请求发送 |
+| **Office 文档** | Apache POI | 3.14-beta1 | Excel 读写 |
+| | Apache POI OOXML | 3.14-beta1 | Excel 2007+ 格式支持 |
+| **WebService** | Apache Axis | 1.4 | SOAP/WSDL 客户端 |
+| | Javax WSDL | 1.5.1 | WSDL 解析（BIRT Runtime） |
+| | Javax XML RPC | 1.1.1 | XML-RPC API |
+| | Commons Discovery | 0.4 | 服务发现 |
+| **消息队列** | Aliyun ONS Client | 1.2.1 | 阿里云消息队列 |
+| **条形码** | Barcode4J | 2.0 | 条形码生成 |
+| **邮件** | Javax Mail | 1.4.1 | JavaMail API |
+| | Javax Activation | 1.1.1 | JavaBeans 激活框架 |
+| **构建** | Apache Ant | 1.8.2 | 项目构建辅助 |
+| | Apache XBean Spring | 4.5 | Spring XML Schema 扩展 |
+| **测试** | JUnit | 4.11 | 单元测试框架（scope: test） |
+| **前端模板** | Bootstrap 3 (ACE Admin) | — | 管理界面模板 |
+| | jQuery | 2.0.3/1.10.2 | JS 库 |
+| **构建插件** | Maven WAR Plugin | 2.2 | WAR 打包 |
+| | Maven Compiler Plugin | 3.1 | Java 编译（source/target: 1.7） |
+| | Maven Surefire Plugin | 2.18.1 | 测试执行（skipTests=true） |
+| **JDK** | Java | 1.7 | 编译与运行环境 |
+
+---
+
+## 完整目录树
 
 ```
-jhwop/
-├── pom.xml                                          # Maven 项目配置
-├── .settings/                                       # Eclipse IDE 配置
-│   ├── org.eclipse.jdt.core.prefs
-│   ├── org.eclipse.wst.common.component
-│   ├── org.eclipse.wst.common.project.facet.core.xml
-│   └── ...
+wxl/
+├── pom.xml                                          # Maven 项目配置文件
+├── README.md                                        # 项目文档（本文件）
+├── .gitignore                                       # Git 忽略配置
+├── .settings/                                       # Eclipse IDE 项目配置
+│   ├── org.eclipse.wst.common.project.facet.core.prefs.xml
+│   └── org.eclipse.wst.common.project.facet.core.xml
+│
 ├── src/
-│   └── main/
-│       ├── java/
-│       │   ├── META-INF/
-│       │   │   └── persistence.xml                  # JPA 持久化单元配置
-│       │   └── wxl/lt/
-│       │       ├── controller/
-│       │       │   └── IndexController.java         # 核心控制器：登录、注册、测试
-│       │       ├── dao/
-│       │       │   ├── GetUserInfDao.java           # 用户数据访问接口
-│       │       │   └── impl/
-│       │       │       ├── BaseDao.java             # 通用 DAO 基类 (HQL/SQL)
-│       │       │       └── GetUserInfDaoImpl.java   # 用户 DAO 实现
-│       │       ├── form/
-│       │       │   └── UserForm.java                # 前端表单数据封装
-│       │       ├── framework/
-│       │       │   ├── constant/
-│       │       │   │   └── GlobalConstant.java      # 全局常量定义
-│       │       │   └── interceptors/
-│       │       │       └── SecurityInterceptor.java # 权限拦截器（会话校验）
-│       │       ├── model/
-│       │       │   ├── IdEntity.java                # 实体基类（统一 ID 策略）
-│       │       │   ├── TbUser.java                  # 用户表实体
-│       │       │   ├── TbUserInf.java               # 用户信息扩展表实体
-│       │       │   └── TbTest.java                  # 测试表实体（未继承基类）
-│       │       ├── pageModel/
-│       │       │   └── PageMessage.java             # 统一 JSON 响应体
-│       │       ├── service/
-│       │       │   ├── GetUerInfService.java        # 用户业务接口（注意拼写错误）
-│       │       │   └── impl/
-│       │       │       └── GetUserInfServiceImpl.java # 用户业务实现
-│       │       └── utils/
-│       │           ├── IpUtils.java                 # 客户端 IP 获取工具
-│       │           ├── MD5Util.java                 # MD5 加密工具（无盐）
-│       │           └── StringUtil.java              # 字符串工具类（大量方法）
-│       ├── resources/
-│       │   ├── config.properties                    # 数据库及应用配置
-│       │   ├── log4j.properties                     # 日志配置
-│       │   ├── spring.xml                           # Spring 主配置文件
-│       │   ├── spring-hibernate.xml                 # Spring + Hibernate + 数据源配置
-│       │   └── spring-mvc.xml                       # Spring MVC 配置
-│       └── webapp/
-│           ├── index.jsp                            # 入口 JSP（转发到登录页）
-│           ├── assets/
-│           │   ├── css/                             # Ace Admin + Bootstrap 样式
-│           │   │   ├── bootstrap.min.css
-│           │   │   ├── ace.min.css
-│           │   │   ├── ace-skins.min.css
-│           │   │   ├── font-awesome.min.css
-│           │   │   └── ...
-│           │   ├── js/                              # 前端 JS 库
-│           │   │   ├── jquery-2.0.3.min.js
-│           │   │   ├── bootstrap.min.js
-│           │   │   ├── ace.min.js
-│           │   │   ├── lt/
-│           │   │   │   ├── common.js                # 前端公共（定义 appPath）
-│           │   │   │   └── login.js                 # 登录/注册 AJAX 逻辑
-│           │   │   └── ...
-│           │   ├── font/                            # 字体图标
-│           │   ├── avatars/                         # 用户头像
-│           │   └── images/
-│           │       └── gallery/                     # 图片库
-│           └── WEB-INF/
-│               ├── web.xml                          # 部署描述符
-│               └── view/
-│                   ├── include.jsp                  # 公共头（CSS/JS 引入）
-│                   ├── index.jsp                    # 主页面（未使用）
-│                   └── login.jsp                    # 登录/注册页面（Ace 模板）
+│   ├── main/
+│   │   ├── java/
+│   │   │   ├── META-INF/
+│   │   │   │   └── persistence.xml                  # JPA 持久化单元配置
+│   │   │   └── wxl/lt/                              # 核心业务包 (wxl.lt)
+│   │   │       ├── controller/
+│   │   │       │   └── IndexController.java         # 用户登录/注册控制器
+│   │   │       ├── service/
+│   │   │       │   ├── GetUerInfService.java        # 用户服务接口（⚠️ 拼写错误: Uer→User）
+│   │   │       │   └── impl/
+│   │   │       │       └── GetUserInfServiceImpl.java # 用户服务实现
+│   │   │       ├── dao/
+│   │   │       │   ├── GetUserInfDao.java           # 用户数据访问接口
+│   │   │       │   └── impl/
+│   │   │       │       ├── BaseDao.java             # 泛型 Hibernate DAO 基类
+│   │   │       │       └── GetUserInfDaoImpl.java   # 用户 DAO 实现
+│   │   │       ├── model/                           # JPA 实体类（数据表映射）
+│   │   │       │   ├── IdEntity.java                # 实体基类（统一 ID 策略）
+│   │   │       │   ├── TbUser.java                  # 用户表实体 (tb_user)
+│   │   │       │   ├── TbUserInf.java               # 用户信息表实体 (tb_user_inf)
+│   │   │       │   └── TbTest.java                  # 测试表实体 (tb_test)
+│   │   │       ├── form/
+│   │   │       │   └── UserForm.java                # 用户表单对象（输入/输出混合）
+│   │   │       ├── pageModel/
+│   │   │       │   └── PageMessage.java             # AJAX JSON 响应封装
+│   │   │       ├── framework/
+│   │   │       │   ├── constant/
+│   │   │       │   │   └── GlobalConstant.java      # 全局常量定义
+│   │   │       │   └── interceptors/
+│   │   │       │       └── SecurityInterceptor.java # 登录权限拦截器
+│   │   │       └── utils/
+│   │   │           ├── IpUtils.java                 # 客户端 IP 获取工具
+│   │   │           ├── MD5Util.java                 # MD5 加密工具
+│   │   │           └── StringUtil.java              # 通用字符串工具类
+│   │   │
+│   │   ├── resources/
+│   │   │   ├── config.properties                    # 主配置文件（数据库/上传参数）
+│   │   │   ├── log4j.properties                     # Log4j 日志配置
+│   │   │   ├── spring.xml                           # Spring 根配置
+│   │   │   ├── spring-hibernate.xml                 # Spring + Hibernate 整合配置
+│   │   │   └── spring-mvc.xml                       # Spring MVC 配置
+│   │   │
+│   │   └── webapp/
+│   │       ├── index.jsp                            # 入口 JSP（转发到登录页）
+│   │       ├── assets/                              # Ace Admin 静态资源
+│   │       │   ├── avatars/                         # 头像图片 (8 files)
+│   │       │   ├── css/                             # 样式文件 (18 files + images/)
+│   │       │   ├── font/                            # 字体文件
+│   │       │   ├── images/                          # 图片资源
+│   │       │   │   └── gallery/                     # 相册图片 (12 files)
+│   │       │   └── js/                              # JavaScript 脚本
+│   │       │       ├── jquery-2.0.3.min.js          # jQuery 2.0.3
+│   │       │       ├── jquery-1.10.2.min.js         # jQuery 1.10.2
+│   │       │       ├── bootstrap.min.js             # Bootstrap 3 JS
+│   │       │       ├── ace-elements.min.js          # ACE UI 组件
+│   │       │       ├── ace.min.js                   # ACE 主题核心
+│   │       │       ├── ace-extra.min.js             # ACE 扩展
+│   │       │       ├── jquery.validate.min.js       # jQuery 表单验证
+│   │       │       ├── jquery-ui-1.10.3.*.min.js    # jQuery UI
+│   │       │       ├── jquery.dataTables.min.js     # DataTables 表格组件
+│   │       │       ├── fullcalendar.min.js          # FullCalendar 日历
+│   │       │       ├── flot/                        # Flot 图表
+│   │       │       ├── fuelux/                      # Fuel UX 组件
+│   │       │       ├── jqGrid/                      # jqGrid 表格
+│   │       │       ├── markdown/                    # Markdown 编辑器
+│   │       │       ├── x-editable/                  # 行内编辑
+│   │       │       ├── date-time/                   # 日期时间组件
+│   │       │       ├── dropzone.min.js              # 拖拽上传
+│   │       │       ├── typeahead-bs2.min.js         # 自动补全
+│   │       │       ├── chosen.jquery.min.js         # 下拉增强
+│   │       │       ├── select2.min.js               # Select2 下拉
+│   │       │       ├── bootbox.min.js               # 对话框
+│   │       │       ├── html5shiv.js                 # IE HTML5 兼容
+│   │       │       ├── respond.min.js               # IE 响应式兼容
+│   │       │       ├── excanvas.min.js              # IE Canvas 兼容
+│   │       │       └── lt/
+│   │       │           ├── common.js                # 项目通用 JS
+│   │       │           └── login.js                 # 登录页 AJAX 逻辑
+│   │       └── WEB-INF/
+│   │           ├── web.xml                          # Web 部署描述符
+│   │           └── view/
+│   │               ├── include.jsp                  # JSP 公共片段
+│   │               ├── index.jsp                    # 首页视图
+│   │               └── login.jsp                    # 登录/注册视图
+│   │
+│   └── test/
+│       └── java/                                    # 单元测试目录（空）
+│
+├── ant-design-vue-jeecg/                            # 前端工程（Ant Design Vue 版 JEECG）
+│   ├── package.json                                 # NPM 依赖配置
+│   ├── babel.config.js                              # Babel 配置
+│   ├── Dockerfile                                   # Docker 构建文件
+│   ├── .dockerignore
+│   ├── .editorconfig
+│   ├── .eslintignore
+│   ├── .gitattributes
+│   ├── .gitignore
+│   ├── .prettierrc                                  # Prettier 格式化配置
+│   ├── idea.config.js                               # IDEA IDE 配置
+│   ├── LICENSE                                      # 开源协议
+│   ├── package-lock.json
+│   ├── README.md
+│   ├── readme1.md
+│   ├── readme2.md
+│   ├── public/
+│   │   ├── index.html                               # SPA 入口 HTML
+│   │   ├── logo.png
+│   │   ├── avatar2.jpg / goright.png
+│   │   ├── color.less
+│   │   ├── v2.js
+│   │   └── tinymce/                                 # 富文本编辑器
+│   └── src/
+│       ├── main.js                                  # Vue 应用入口
+│       ├── App.vue                                  # 根组件
+│       ├── api/                                     # API 请求封装
+│       │   ├── api.js / index.js / login.js
+│       │   ├── manage.js / GroupRequest.js
+│       ├── assets/                                  # 前端静态资源
+│       │   ├── background.svg / checkcode.png
+│       ├── components/                              # Vue 组件库
+│       │   ├── chart/ / dict/ / layouts/ / tinymce/
+│       │   ├── tools/ / _util/ / jeecg/
+│       ├── config/                                  # 应用配置
+│       ├── router/                                  # Vue Router 路由
+│       ├── store/                                   # Vuex 状态管理
+│       ├── utils/                                   # 前端工具函数
+│       └── views/                                   # 页面组件
+│
+└── original/                                        # JEECG-Boot 原始后端代码（参考/备份）
+    ├── pom.xml                                      # Spring Boot 父 POM
+    ├── jeecg-boot-base-common/                      # 公共模块
+    │   └── pom.xml
+    └── jeecg-boot-module-system/                    # 系统模块（含 Mapper、资源配置等）
+        └── pom.xml
 ```
 
 ---
 
-## 四、核心功能说明
+## 核心功能说明
 
-### 4.1 用户登录
+### 1. 用户登录（`POST /index/userLogin`）
 
-- **请求路径**: `POST /index/userLogin`
-- **参数**: `userName`（可为用户名/邮箱/手机号）、`password`
-- **流程**:
-  1. 前端 `login.js` 通过 AJAX POST 提交表单数据
-  2. `IndexController.userLogin()` 接收 `UserForm`，对密码进行 MD5 哈希
-  3. 调用 `GetUserInfServiceImpl.getUserLoginInf()` 进行验证
-  4. DAO 层通过 HQL 字符串拼接查询 `tb_user` 表
-  5. 验证成功后更新 `lastLoginTime` 并将用户对象存入 `session.systemUser`
-  6. 返回 `PageMessage` JSON 响应（`success` 字段 + 错误信息）
+**流程**：
 
-### 4.2 用户注册
+1. 用户在 `login.jsp` 页面输入用户名（支持用户名/邮箱/手机号三合一登录）和密码
+2. 前端 `login.js` 通过 jQuery AJAX 发送 POST 请求
+3. `SecurityInterceptor.preHandle()` 检测到 URL 命中白名单 `/index/userLogin`，直接放行
+4. `IndexController.userLogin()` 接收 `@Validated UserForm`（实际校验无效，UserForm 无任何 JSR-303 约束注解）
+5. 调用 `MD5Util.md5(form.getPassword())` 对密码明文做 MD5 加密
+6. 调用 `GetUserInfServiceImpl.getUserLoginInf(form)`：
+   - 校验 `userName` 和 `password` 非空
+   - 调用 `GetUserInfDaoImpl.getUserLoginInf(form)` 通过 HQL 拼接查询用户
+   - 比对 `userLogin.getPassword()` 与 `form.getPassword()` (已 MD5)
+   - 密码匹配：更新 `lastLoginTime`，返回 `LOGIN_OK(1)`
+   - 密码不匹配：返回 `PASSWORD_ERROR(0)`
+   - 用户不存在：返回 `LOGINNAME_ERROR(-1)`
+7. 登录成功后，Controller 将用户对象存入 `session.setAttribute("systemUser", user)`
+8. 返回 `PageMessage` JSON（success/errorMsg）给前端
 
-- **请求路径**: `POST /index/userRegister`
-- **参数**: `userName`、`password`、`userEmail`、`userMobileNo`
-- **流程**:
-  1. 前端 `login.js` 通过 AJAX POST 提交注册表单
-  2. 后端校验用户名/邮箱/手机号是否重复
-  3. 密码 MD5 哈希后存储
-  4. 自动记录注册时间（`new Date()`）和客户端 IP（`IpUtils.getIpAddress()`）
-  5. 通过 Hibernate `save()` 持久化 `TbUser` 实体
+**支持的登录方式**：用户名 (`userName`)、邮箱 (`userEmail`)、手机号 (`userMobileNo`) 均可作为登录凭证，通过 HQL OR 条件查询实现。
 
-### 4.3 权限拦截
+### 2. 用户注册（`POST /index/userRegister`）
 
-- `SecurityInterceptor` 拦截所有 HTTP 请求（`/**`）
-- 白名单: `/index/login`（登录页）、`/index/userLogin`（登录提交）
-- 非白名单请求检查 `session.systemUser` 是否存在
-- 未登录用户转发回首页（`request.getRequestDispatcher("/").forward()`）
+**流程**：
 
-### 4.4 登录页面
+1. 用户在 `login.jsp` 注册面板填写邮箱、手机号、用户名、密码、确认密码
+2. 前端 `login.js` 做基础校验（用户名 6-10 位、密码 6-12 位、两次密码一致）
+3. 请求到达 `IndexController.userRegister()`：
+   - `checkUser(form)` 调用 `getUserInfDao.checkUserUser(form)` 检查唯一性
+   - 按优先级检查：用户名 → 邮箱 → 手机号（任一重复则返回错误信息）
+4. 通过检查后，`BeanUtils.copyProperties(form, user)` 复制属性到实体
+5. 自动填充：`registerTime`（当前时间）、`userIp`（客户端 IP）、`password`（MD5 加密）
+6. 调用 `getUserInfDao.userRegister(user)` → `BaseDao.save(user)` 保存到数据库
+7. 返回 `PageMessage` JSON（success/successMsg 或 errorMsg）
 
-- `index.jsp` 入口自动转发至 `/index/login`
-- `IndexController.indexPage()` 返回逻辑视图名 `"login"`, 解析为 `/WEB-INF/view/login.jsp`
-- 页面使用 Ace Admin 模板，包含登录框、忘记密码框、注册框三个面板
-- 页面包含 CNZZ 站长统计脚本（`v7.cnzz.com`）
+### 3. 登录页面（`GET /index/login`）
 
----
+返回 `login.jsp` 视图。JSP 使用 ACE Admin 模板，包含三个面板：
+- **登录面板**（`#login-box`）：用户名 + 密码 + 记住我 + Login 按钮
+- **忘记密码面板**（`#forgot-box`）：邮箱输入 + 发送按钮（仅有 UI，后端无实现）
+- **注册面板**（`#signup-box`）：邮箱 + 手机 + 用户名 + 密码 + 确认密码 + 注册按钮
 
-## 五、数据库表结构设计
+### 4. 权限拦截器（SecurityInterceptor）
 
-### 5.1 tb_user（用户表）
+实现 `org.springframework.web.servlet.HandlerInterceptor` 接口：
 
-| 字段名 | 类型 | 长度 | 约束 | 说明 |
-|--------|------|------|------|------|
-| id | BIGINT | — | PK, AUTO_INCREMENT | 主键（继承自 IdEntity） |
-| user_name | VARCHAR | 40 | — | 用户名 |
-| password | VARCHAR | 50 | — | 密码（MD5 哈希，无盐） |
-| user_email | VARCHAR | 255 | — | 邮箱 |
-| user_mobile_no | VARCHAR | 11 | — | 手机号 |
-| user_ip | VARCHAR | 255 | — | 注册 IP 地址 |
-| register_time | DATETIME | — | — | 注册时间 |
-| last_login_time | DATETIME | — | — | 最后登录时间 |
-| del_flag | VARCHAR | 1 | — | 删除标记（0=正常, 1=删除） |
+- **拦截范围**：`/**` 所有请求（`spring-mvc.xml` 中配置）
+- **白名单 URL**：
+  - `/index/login` — 登录页面
+  - `/index/userLogin` — 登录接口（⚠️ 注册接口 `/index/userRegister` 未加入白名单但依赖 URL 前缀匹配实际可访问）
+- **拦截逻辑**：
+  - 获取 `request.getSession().getAttribute("systemUser")`
+  - 若 URL 在白名单或包含 `/index/login` → 放行
+  - 若 session 中无 `systemUser` → `forward` 到根路径 `/`
+  - 否则放行
+- **缺陷**：
+  - 仅做二元判断（是否登录），无角色/权限区分
+  - 注册接口 `/index/userRegister` 未在 excludeUrls 中显式声明
 
-**对应实体**: `wxl.lt.model.TbUser`（继承 `IdEntity`，含 `@NamedQuery`）
+### 5. 通用数据访问层（BaseDao）
 
-### 5.2 tb_user_inf（用户信息扩展表）
+泛型基类 `BaseDao<T>` 提供了完整的 Hibernate CRUD 操作封装：
 
-| 字段名 | 类型 | 长度 | 约束 | 说明 |
-|--------|------|------|------|------|
-| id | BIGINT | — | PK, AUTO_INCREMENT | 主键（继承自 IdEntity） |
-| user_age | INT | — | — | 用户年龄 |
-| user_city | VARCHAR | 255 | — | 所在城市 |
-| user_province | VARCHAR | 255 | — | 所在省份 |
+| 方法类别 | 方法列表 | 说明 |
+|----------|----------|------|
+| **增** | `save(T o)`, `saveOrUpdate(T o)` | 序列化返回主键 / 无返回值 |
+| **删** | `delete(T o)` | 删除实体 |
+| **改** | `update(T o)` | 更新实体 |
+| **查（单条）** | `get(Class<T> c, Serializable id)` | 按主键查询 |
+| | `get(String hql)` | HQL 查询（无参数） |
+| | `get(String hql, Map params)` | HQL 查询（参数绑定） |
+| **查（列表）** | `find(String hql)` | HQL 列表查询 |
+| | `find(String hql, Map params)` | 带参数 HQL 列表查询 |
+| | `find(String hql, int page, int rows)` | HQL 分页查询 |
+| | `find(String hql, Map params, int page, int rows)` | 带参数 HQL 分页查询 |
+| | `findBySql(String sql)` | 原生 SQL 查询 |
+| | `findBySql(String sql, Map params)` | 带参数原生 SQL 查询 |
+| | `findBySql(String sql, int page, int rows)` | 原生 SQL 分页 |
+| | `findBySql(String sql, Map params, int page, int rows)` | 带参数原生 SQL 分页 |
+| **统计** | `count(String hql)` | HQL 计数 |
+| | `count(String hql, Map params)` | 带参数 HQL 计数 |
+| | `countBySql(String sql)` | 原生 SQL 计数（返回 BigInteger） |
+| | `countBySql(String sql, Map params)` | 带参数原生 SQL 计数 |
+| **更新** | `executeHql(String hql)` | 执行 HQL DML |
+| | `executeHql(String hql, Map params)` | 带参数 HQL DML |
+| | `executeSql(String sql)` | 执行原生 SQL DML |
+| | `executeSql(String sql, Map params)` | 带参数原生 SQL DML |
 
-**对应实体**: `wxl.lt.model.TbUserInf`（继承 `IdEntity`）
-
-### 5.3 tb_test（测试表）
-
-| 字段名 | 类型 | 长度 | 约束 | 说明 |
-|--------|------|------|------|------|
-| id | VARCHAR | — | PK, AUTO_INCREMENT | 主键（String 类型，未继承 IdEntity） |
-| user_name | VARCHAR | 255 | — | 用户名 |
-| user_age | VARCHAR | 255 | — | 用户年龄 |
-
-**对应实体**: `wxl.lt.model.TbTest`（独立实体，**未继承** `IdEntity`，且 `id` 为 `String` 类型却标记 `@GeneratedValue(strategy=GenerationType.IDENTITY)`，存在类型不一致问题）
-
-**Hibernate DDL 策略**: `hibernate.hbm2ddl.auto=update`（自动根据实体更新表结构）
-
----
-
-## 六、架构分层分析
-
-### 6.1 整体架构
-
-本项目采用经典的 **MVC 三层架构**，具体分层如下：
-
-```
-┌──────────────────────────────────────────────────┐
-│  View 层 (JSP + jQuery + AJAX)                    │
-│  /WEB-INF/view/login.jsp, assets/js/lt/login.js  │
-├──────────────────────────────────────────────────┤
-│  Controller 层 (Spring MVC)                       │
-│  wxl.lt.controller.IndexController               │
-│  用户请求入口，接收表单，调用 Service，返回 JSON    │
-├──────────────────────────────────────────────────┤
-│  Interceptor (Spring MVC HandlerInterceptor)      │
-│  wxl.lt.framework.interceptors.SecurityInterceptor│
-│  会话校验，拦截未登录请求                          │
-├──────────────────────────────────────────────────┤
-│  Service 层 (业务逻辑)                             │
-│  wxl.lt.service.impl.GetUserInfServiceImpl        │
-│  密码验证、用户注册业务逻辑                         │
-├──────────────────────────────────────────────────┤
-│  DAO 层 (数据访问)                                 │
-│  wxl.lt.dao.impl.GetUserInfDaoImpl                │
-│  wxl.lt.dao.impl.BaseDao<T> (通用 CRUD)           │
-│  HQL/SQL 查询封装                                  │
-├──────────────────────────────────────────────────┤
-│  Model 层 (Hibernate JPA 实体)                     │
-│  IdEntity(基类) → TbUser, TbUserInf              │
-│  TbTest(独立实体)                                  │
-├──────────────────────────────────────────────────┤
-│  Database (MySQL, Druid 连接池)                    │
-│  DataSource → SessionFactory → TransactionManager │
-└──────────────────────────────────────────────────┘
-```
-
-### 6.2 请求流程图
-
-```
-用户浏览器
-    │
-    ▼
-┌──────────────────┐    未登录    ┌─────────────────────┐
-│  /index/login    │────────────▶│  login.jsp           │
-│  (GET 登录页面)   │◀────────────│  (登录表单)           │
-└──────────────────┘             └──────┬──────────────┘
-                                        │
-                          POST /index/userLogin (AJAX)
-                                        │
-                                        ▼
-┌───────────────────────────────────────────────────────────┐
-│  SecurityInterceptor.preHandle()                          │
-│  - 检查 URI 是否在白名单中 (/index/login, /index/userLogin)  │
-│  - 白名单 → 放行                                          │
-└───────────────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌───────────────────────────────────────────────────────────┐
-│  IndexController.userLogin()                              │
-│  1. form.getPassword() → MD5Util.md5() 哈希               │
-│  2. gtUerInfService.getUserLoginInf(form) 调用 Service     │
-│  3. 成功 → session.setAttribute("systemUser", ...)        │
-│  4. 返回 PageMessage (success/errorMsg)                   │
-└───────────────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌───────────────────────────────────────────────────────────┐
-│  GetUserInfServiceImpl.getUserLoginInf()                  │
-│  1. 校验 userName/password 非空                           │
-│  2. getUserInfDao.getUserLoginInf(form) → 查询用户         │
-│  3. 比对密码 → 返回 LOGIN_OK / PASSWORD_ERROR             │
-│  4. 更新 lastLoginTime                                    │
-└───────────────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌───────────────────────────────────────────────────────────┐
-│  GetUserInfDaoImpl.getUserLoginInf()                      │
-│  - HQL 字符串拼接查询:                                     │
-│    "from TbUser u where u.userName='...' or               │
-│     u.userEmail='...' or u.userMobileNo='...'"            │
-│  - BaseDao.get(hql) → Hibernate Query.list()              │
-└───────────────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌───────────────────────────────────────────────────────────┐
-│  MySQL 数据库 (lt.tb_user)                                │
-│  - Druid 连接池 (maxActive=20)                            │
-│  - Hibernate 自动映射                                     │
-│  - 声明式事务 AOP (REQUIRED 传播级别)                      │
-└───────────────────────────────────────────────────────────┘
-```
-
-### 6.3 事务管理
-
-- 配置方式: **AOP 拦截器方式**（`tx:advice` + `aop:advisor`）
-- 切入点: `execution(* wxl.lt.service..*Impl.*(..))`
-- 事务规则:
-  - 写操作（`add*`, `save*`, `update*`, `delete*`, `register*` 等）→ `REQUIRED`
-  - 读操作（`get*`, `find*`, `load*`, `search*`, `datagrid*`）→ `REQUIRED`，`read-only=true`
-  - 通配方法 `*` → `REQUIRED`
-
-### 6.4 Spring 配置分层
-
-| 配置文件 | 加载方式 | 职责 |
-|---------|---------|------|
-| `spring.xml` | `ContextLoaderListener` | 属性占位符引入、定时任务（已注释） |
-| `spring-hibernate.xml` | `ContextLoaderListener` | 数据源、SessionFactory、事务管理、DAO/Service 扫描 |
-| `spring-mvc.xml` | `DispatcherServlet` | Controller 扫描、消息转换器、视图解析器、文件上传、拦截器 |
+**关键设计**：
+- 通过 `@Autowired` 注入 `SessionFactory`，使用 `getCurrentSession()` 获取当前事务 Session
+- `get(String hql, Map<String, Object> params)` 等方法已提供安全的参数绑定机制
+- 支持 HQL 与原生 SQL 两种查询模式
+- 分页方法使用 `setFirstResult` + `setMaxResults` 实现
 
 ---
 
-## 七、安全机制分析
+## 数据库表结构设计
 
-### 7.1 现有安全措施
+> 以下表结构通过分析 JPA 实体类 JPA 注解逆向推导得出。所有实体均使用 `@Entity` + `@Table` 注解映射。
+> 主键生成策略为 `@GeneratedValue(strategy = GenerationType.IDENTITY)`（数据库自增）。
+> ORM 配置 `hibernate.hbm2ddl.auto=update` 允许 Hibernate 在应用启动时自动同步表结构。
 
-| 措施 | 实现方式 | 状态 |
-|------|---------|------|
-| **会话认证** | `SecurityInterceptor` 检查 `session.systemUser` | ✅ 已实现 |
-| **密码哈希** | MD5 无盐哈希 | ⚠️ 存在但强度不足 |
-| **URL 白名单** | `/index/login`、`/index/userLogin` 免验证 | ✅ 已实现 |
-| **字符编码** | `CharacterEncodingFilter` 强制 UTF-8 | ✅ 已实现 |
-| **文件上传限制** | `CommonsMultipartResolver` maxUploadSize=100MB | ✅ 已实现 |
-| **文件类型限制** | config.properties 中 `uploadFileExts` | ✅ 配置存在 |
+### tb_user — 用户主表
 
-### 7.2 缺失的安全措施
+| 字段名 | Java 类型 | JDBC 类型 | 长度/精度 | 是否为空 | 约束 | 说明 |
+|--------|-----------|-----------|-----------|----------|------|------|
+| id | Long | BIGINT | — | NOT NULL | PK, AUTO_INCREMENT | 主键（继承自 IdEntity） |
+| user_name | String | VARCHAR | 40 | — | — | 用户名 |
+| password | String | VARCHAR | 50 | — | — | 密码（MD5 密文存储） |
+| user_email | String | VARCHAR | 255 | — | — | 用户邮箱 |
+| user_mobile_no | String | VARCHAR | 11 | — | — | 手机号码 |
+| user_ip | String | VARCHAR | 255 | — | — | 注册时客户端 IP 地址 |
+| register_time | java.util.Date | DATETIME | — | — | — | 注册时间 |
+| last_login_time | java.util.Date | DATETIME | — | — | — | 最后登录时间 |
+| del_flag | String | VARCHAR | 1 | — | — | 删除标记（软删除） |
 
-以下安全机制在当前代码中**完全缺失**：
+- 实体类继承 `IdEntity`，获取统一的 `Long id` 主键
+- 实现 `Serializable` 接口
+- 命名查询：`@NamedQuery(name="TbUser.findAll", query="SELECT t FROM TbUser t")`
 
-- **CSRF 防护**: 无 Token 验证
-- **输入验证**: 注册时仅注释了前端校验，后端无格式校验
-- **XSS 防护**: 无任何输出编码
-- **密码强度策略**: 无最小长度/复杂度要求（前端校验代码已注释）
-- **登录失败锁定**: 无暴力破解防护
-- **SQL 参数化**: 使用字符串拼接构建 HQL（见第八节）
-- **HTTPS 强制**: 无
-- **Secure Cookie**: 未配置
+### tb_user_inf — 用户扩展信息表
+
+| 字段名 | Java 类型 | JDBC 类型 | 长度/精度 | 是否为空 | 约束 | 说明 |
+|--------|-----------|-----------|-----------|----------|------|------|
+| id | Long | BIGINT | — | NOT NULL | PK, AUTO_INCREMENT | 主键（继承自 IdEntity） |
+| user_age | int | INT | — | — | — | 用户年龄 |
+| user_city | String | VARCHAR | 255 | — | — | 所在城市 |
+| user_province | String | VARCHAR | 255 | — | — | 所在省份 |
+
+- 实体类继承 `IdEntity`
+- 目前与 `tb_user` 无显式外键关联
+
+### tb_test — 测试表
+
+| 字段名 | Java 类型 | JDBC 类型 | 长度/精度 | 是否为空 | 约束 | 说明 |
+|--------|-----------|-----------|-----------|----------|------|------|
+| id | String | VARCHAR | 255 | NOT NULL | PK（⚠️） | 主键 |
+| user_name | String | VARCHAR | 255 | — | — | 用户名 |
+| user_age | String | VARCHAR | 255 | — | — | 年龄 |
+
+- ⚠️ **类型冲突**：id 声明为 `String` 类型但使用 `@GeneratedValue(strategy=GenerationType.IDENTITY)`（需要数值类型），与 MySQL 自增（BIGINT）不兼容。此实体不继承 `IdEntity`，且与 `IdEntity` 的设计不一致。
 
 ---
 
-## 八、已知问题与安全漏洞
+## 架构分层分析
 
-> 按风险优先级从高到低排列
+### 分层架构图
 
-### 🔴 P0 — 严重（可导致数据泄露或系统入侵）
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        前端展示层                                 │
+│  ┌───────────────────────────┐  ┌───────────────────────────────┐ │
+│  │  JSP 视图层 (ACE Admin)   │  │  Vue SPA (ant-design-vue-jeecg)│ │
+│  │  - login.jsp (登录/注册)   │  │  - Ant Design Vue 组件库       │ │
+│  │  - index.jsp (系统首页)    │  │  - Vuex 状态管理               │ │
+│  │  - jQuery + AJAX          │  │  - Axios HTTP 请求             │ │
+│  │  - Bootstrap 3 + ACE 主题  │  │  - Vue Router 路由             │ │
+│  └─────────────┬─────────────┘  └───────────────┬───────────────┘ │
+│                │  JSON/AJAX                      │  HTTP/REST     │
+└────────────────┼────────────────────────────────┼────────────────┘
+                 │                                │
+                 ▼                                │
+┌────────────────────────────────────────────────┼────────────────┐
+│               Web 容器 (Servlet 3.0 / Tomcat)    │                │
+│  ┌──────────────────────────────────────────────┴────────────────┐│
+│  │  web.xml                                                      ││
+│  │  ├─ CharacterEncodingFilter (UTF-8, forceEncoding=true)      ││
+│  │  ├─ ContextLoaderListener (Spring 根上下文)                   ││
+│  │  ├─ DispatcherServlet["springMVC"] → url-pattern: /          ││
+│  │  └─ 14 个 default servlet-mapping (.css/.js/.png/...)       ││
+│  └──────────────────────────────────────────────────────────────┘│
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │          DispatcherServlet → spring-mvc.xml 加载              ││
+│  │  ┌────────────────────────────────────────────────────────┐  ││
+│  │  │        SecurityInterceptor (权限拦截器)                 │  ││
+│  │  │  - 拦截所有请求 /**                                     │  ││
+│  │  │  - 白名单: /index/login, /index/userLogin              │  ││
+│  │  │  - 验证: session.getAttribute("systemUser")            │  ││
+│  │  │  - 未登录 → forward("/")                               │  ││
+│  │  └────────────────────────┬───────────────────────────────┘  ││
+│  │  ┌────────────────────────┴───────────────────────────────┐  ││
+│  │  │          Controller 层 (IndexController)               │  ││
+│  │  │  @Controller @RequestMapping("/index")                 │  ││
+│  │  │  ├─ GET  /index/login        → 登录视图 login.jsp      │  ││
+│  │  │  ├─ POST /index/userLogin    → 用户登录 (JSON 返回)    │  ││
+│  │  │  ├─ POST /index/userRegister → 用户注册 (JSON 返回)    │  ││
+│  │  │  └─ GET  /index/test         → 测试 (void 方法)        │  ││
+│  │  └────────────────────────┬───────────────────────────────┘  ││
+│  └───────────────────────────┼──────────────────────────────────┘│
+│                              │ @Autowired 依赖注入                │
+│                              ▼                                    │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │       Service 业务层 (GetUserInfServiceImpl)                  ││
+│  │  @Service                                                     ││
+│  │  ├─ getUserLoginInf(form)  → 登录验证 + 密码比对 + 更新登录时间││
+│  │  ├─ userRegister(user)     → 注册 → 调用 DAO.save()          ││
+│  │  ├─ checkUserUser(form)    → 用户名/邮箱/手机号唯一性检查     ││
+│  │  └─ selectUserLogin()      → 返回当前登录用户（线程不安全）   ││
+│  │                                                                ││
+│  │  ┌─ AOP 事务边界 (spring-hibernate.xml) ──────────────────┐  ││
+│  │  │  tx:advice 环绕 execution(* wxl.lt.service..*Impl.*)  │  ││
+│  │  │  - save*/update*/delete*/add* → REQUIRED               │  ││
+│  │  │  - get*/find*/load*/search*   → REQUIRED, readOnly     │  ││
+│  │  │  - *                           → REQUIRED               │  ││
+│  │  └────────────────────────────────────────────────────────┘  ││
+│  └───────────────────────────┬──────────────────────────────────┘│
+│                              │ @Autowired 依赖注入                │
+│                              ▼                                    │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │       DAO 数据访问层                                           ││
+│  │  ┌────────────────────────────────────────────────────────┐  ││
+│  │  │  BaseDao<T> (泛型 Hibernate DAO 基类)                   │  ││
+│  │  │  @Autowired SessionFactory                              │  ││
+│  │  │  - CRUD: save/get/delete/update/saveOrUpdate            │  ││
+│  │  │  - HQL: find/count/executeHql (支持分页、参数绑定)      │  ││
+│  │  │  - SQL: findBySql/countBySql/executeSql (原生查询)      │  ││
+│  │  └────────────────────────────────────────────────────────┘  ││
+│  │  ┌────────────────────────────────────────────────────────┐  ││
+│  │  │  GetUserInfDaoImpl (extends BaseDao<TbUser>)           │  ││
+│  │  │  @Repository                                            │  ││
+│  │  │  - getUserLoginInf(form)  → HQL 字符串拼接查询          │  ││
+│  │  │  - userRegister(user)     → 调用 this.save(user)        │  ││
+│  │  │  - checkUserUser(form)    → HQL 字符串拼接查询          │  ││
+│  │  │  - updateUser(user)       → 调用 this.update(user)      │  ││
+│  │  └────────────────────────────┬───────────────────────────┘  ││
+│  └────────────────────────────────┼─────────────────────────────┘│
+│                                   │ Hibernate Session             │
+│                                   ▼                               │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │  Hibernate 4.2.5.Final                                       ││
+│  │  └─ LocalSessionFactoryBean (注解扫描 wxl.lt.model)          ││
+│  │     └─ 扫描包: wxl.lt.model (TbUser, TbUserInf, TbTest)     ││
+│  └───────────────────────────┬──────────────────────────────────┘│
+│  ┌───────────────────────────┴──────────────────────────────────┐│
+│  │  Alibaba Druid 1.0.2 连接池                                   ││
+│  │  ├─ maxActive=20, minIdle=0                                  ││
+│  │  ├─ maxWait=60000 (60s)                                      ││
+│  │  ├─ removeAbandoned=true, timeout=1800s (30min)              ││
+│  │  └─ filters=stat (SQL 监控)                                   ││
+│  └───────────────────────────┬──────────────────────────────────┘│
+│                              │ JDBC                               │
+│                              ▼                                    │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │  MySQL 5.x 数据库                                            ││
+│  │  └─ jdbc:mysql://localhost:3306/lt?useUnicode=true&...       ││
+│  └──────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────┘
+```
 
-#### 8.1 SQL 注入漏洞
+### 请求完整流程图（用户登录）
 
-**位置**: `GetUserInfDaoImpl.java` 第 29-30 行、第 53 行
+```
+┌──────────┐     POST /index/userLogin       ┌───────────────────────────────┐
+│  浏览器   │ ───────────────────────────────▶ │  web.xml                      │
+│ login.jsp │     userName=admin              │  CharacterEncodingFilter      │
+│           │     password=123456             │  → 强制 UTF-8 编码             │
+└──────────┘                                 └───────────────┬───────────────┘
+                                                            │
+                                               ┌────────────▼───────────────┐
+                                               │  SecurityInterceptor        │
+                                               │  preHandle()                │
+                                               │  → URL 匹配 /index/userLogin│
+                                               │  → 命中白名单 → return true  │
+                                               │  → 放行                     │
+                                               └───────────────┬───────────────┘
+                                                               │
+                                               ┌───────────────▼───────────────┐
+                                               │  DispatcherServlet            │
+                                               │  → 路由到 IndexController      │
+                                               │    .userLogin()                │
+                                               └───────────────┬───────────────┘
+                                                               │
+                    ┌──────────────────────────────────────────▼──────────────────────────────────────────┐
+                    │  IndexController.userLogin(@Validated UserForm, HttpSession)                        │
+                    │                                                                                     │
+                    │  1. PageMessage pm = new PageMessage()          // 初始化响应对象                    │
+                    │  2. form.setPassword(MD5Util.md5("123456"))     // 密码 MD5 → "e10adc3949ba59a..." │
+                    │  3. flag = gtUerInfService.getUserLoginInf(form) // 调用 Service 层                 │
+                    │     ├─ StringUtil.isNotEmpty(admin) && isNotEmpty(md5...) → true                    │
+                    │     ├─ TbUser userLogin = dao.getUserLoginInf(form)                                │
+                    │     │   └─ HQL: "from TbUser u where u.userName='admin' or                         │
+                    │     │           u.userEmail='admin' or u.userMobileNo='admin'"                     │
+                    │     │   └─ BaseDao.get(hql) → 返回 TbUser{userName=admin, password=e10adc...}     │
+                    │     ├─ if (user != null) → true (user 是类字段，永远非 null)                        │
+                    │     ├─ userLogin.getPassword().equals(md5...) → true                                │
+                    │     ├─ user = userLogin (更新类字段)                                                │
+                    │     ├─ userLogin.setLastLoginTime(new Date())                                      │
+                    │     ├─ dao.updateUser(userLogin)                                                    │
+                    │     └─ return GlobalConstant.LOGIN_OK (1)                                          │
+                    │  4. session.setAttribute("systemUser", user) // 写入 Session                       │
+                    │  5. 返回 pm (默认 success=true) → JSON 响应                                         │
+                    └──────────────────────────────────────────────────────────────────────────────────────┘
+                                                               │
+                                               ┌───────────────▼───────────────┐
+                                               │  MappingJacksonHttpMessage     │
+                                               │  Converter 序列化为 JSON       │
+                                               │  {"success":true,"flag":0}     │
+                                               └───────────────┬───────────────┘
+                                                               │
+                                               ┌───────────────▼───────────────┐
+                                               │  浏览器接收 JSON               │
+                                               │  login.js 处理 → 跳转首页     │
+                                               └───────────────────────────────┘
+```
 
+---
+
+## 安全机制分析
+
+### 现有安全措施
+
+| 安全机制 | 实现方式 | 安全评估 | 详细说明 |
+|----------|----------|----------|----------|
+| 密码加密存储 | MD5 无盐单次哈希 | ❌ 极弱 | 32位MD5；提供16位模式（截取中间16位），熵值减半 |
+| 访问控制 | SecurityInterceptor 检查 session | ⚠️ 基础 | 仅做二元判断（是否登录），无RBAC细粒度控制 |
+| 字符编码防护 | CharacterEncodingFilter 强制 UTF-8 | ✅ 有效 | 防止编码绕过攻击 |
+| 会话管理 | HttpSession 存储 systemUser | ⚠️ 基础 | 无Session固定防护、无超时配置、无并发控制 |
+| 参数校验 | @Validated 注解 | ❌ 无效 | UserForm 无任何 JSR-303 约束注解 |
+| CSRF 防护 | 无 | ❌ 缺失 | 无同步令牌、无 SameSite Cookie、无 Origin 校验 |
+| 暴力破解防护 | 无 | ❌ 缺失 | 无登录频率限制、无验证码、无账户锁定 |
+| 角色权限控制 | 代码定义了 ADMIN_LOGINTYPE 常量但未使用 | ❌ 缺失 | 无 RBAC/ACL 实现 |
+| HTTPS 强制 | 无安全传输保证配置 | ❌ 缺失 | 登录凭证明文传输 |
+| SQL 注入防护 | 预留了参数绑定方法但实际使用字符串拼接 | ❌ 存在注入 | BaseDao 有安全方法，但 DAO 实现未使用 |
+| XSS 防护 | 无输出转义 | ❌ 缺失 | JSP 直接输出用户数据 |
+
+### 密码学安全详细分析
+
+| 风险项 | 详细说明 |
+|--------|----------|
+| **算法过时** | MD5 已被证明存在碰撞攻击（2004年），NIST 已不再推荐 |
+| **无盐值** | 相同密码生成相同哈希，彩虹表秒查。例如 `admin`→`21232f297a7a57a5a743894a0e4a801fc3` |
+| **无迭代** | 单次哈希，GPU 暴力破解可达数十亿次/秒 |
+| **16位模式** | `md5For16()` 取 32 位中间 16 位，熵值从 128bit 降至 64bit，碰撞概率大幅上升 |
+| **密码字段长度** | `VARCHAR(50)` 不足以存储 BCrypt（约60字符），阻碍密码安全升级 |
+
+---
+
+## 已知问题与安全漏洞
+
+### 🔴 极高优先级（CRITICAL — 必须立即修复）
+
+#### 1. SQL 注入漏洞（HQL 拼接）
+
+**位置**: `src/main/java/wxl/lt/dao/impl/GetUserInfDaoImpl.java:29-31, 53`
+
+**问题代码**:
 ```java
-// 第29-30行 — 登录查询
+// 登录查询 (第29-31行)
 String hql = "from TbUser u where u.userName='"+form.getUserName()
     +"' or u.userEmail='"+form.getUserName()
     +"' or u.userMobileNo='"+form.getUserName()+"'";
 
-// 第53行 — 注册重复校验
+// 用户查重 (第53行)
 String hql = "from TbUser u where u.userName='"+form.getUserName()
     +"' or u.userEmail='"+form.getUserEmail()
     +"' or u.userMobileNo='"+form.getUserMobileNo()+"'";
 ```
 
-**影响**: 攻击者可通过构造特殊用户名/密码绕过认证，或获取/删除全表数据。虽然 `BaseDao` 中已定义带 `Map<String, Object>` 参数的参数化查询方法，但 DAO 实现中未使用。
+**攻击示例**: 输入用户名 `' or '1'='1` → HQL 变为 `where u.userName='' or '1'='1' or ...` → 绕过认证返回第一条记录
 
-**修复**: 使用 `BaseDao.get(String hql, Map<String, Object> params)` 参数化查询替代字符串拼接。
+**本质**: BaseDao 中已提供参数绑定方法（`get(String hql, Map<String, Object> params)`），但 `GetUserInfDaoImpl` 未使用，而是直接通过 Java 字符串拼接构造 HQL。
 
-#### 8.2 数据库密码明文存储
+#### 2. 密码验证逻辑缺陷 — NPE + 绕过风险
 
-**位置**: `config.properties` 第 7-8 行
+**位置**: `src/main/java/wxl/lt/service/impl/GetUserInfServiceImpl.java:36-51`
+
+**问题代码**:
+```java
+private TbUser user = new TbUser();  // 类字段，初始化后永远非 null
+
+@Override
+public Integer getUserLoginInf(UserForm form) {
+    if (StringUtil.isNotEmpty(form.getUserName()) && StringUtil.isNotEmpty(form.getPassword())) {
+        TbUser userLogin = getUserInfDao.getUserLoginInf(form);  // 局部变量
+        if (user != null) {                       // BUG: 应为 userLogin != null
+            if (userLogin.getPassword().equals(form.getPassword())) { // userLogin 可能为 null → NPE!
+                user = userLogin;
+                userLogin.setLastLoginTime(new Date());
+                getUserInfDao.updateUser(userLogin);
+                return GlobalConstant.LOGIN_OK;
+            } else {
+                return GlobalConstant.PASSWORD_ERROR;
+            }
+        }
+    }
+    return GlobalConstant.LOGINNAME_ERROR;
+}
+```
+
+**分析**:
+- `if (user != null)` 检查的是类成员变量 `private TbUser user = new TbUser()`，永远为 `true`
+- 当数据库查不到用户时，`userLogin` 为 `null`，执行 `userLogin.getPassword()` 触发 **NullPointerException**
+- 变量名混淆（`user` 字段 vs `userLogin` 局部变量）导致判断条件失效
+
+**综合风险**: 结合 SQL 注入漏洞，攻击者可注入任意 SQL 绕过所有认证。
+
+#### 3. 数据库密码明文硬编码
+
+**位置**: `src/main/resources/config.properties:7-8`
 
 ```properties
 jdbc_username=root
 jdbc_password=634111
 ```
 
-**影响**: 数据库 root 账号密码以明文形式保存在版本控制中，任何拥有仓库访问权限的人可直接连接数据库。
+- 使用 `root` 账户连接数据库（最高权限）
+- 密码 `634111` 以明文存储在已提交 Git 的配置文件中
+- 任何拥有代码仓库访问权限的人均可获取数据库完全控制权
+- 缺少环境变量/JNDI/加密配置等安全实践
 
-**修复**: 使用环境变量或加密配置（如 Jasypt）存储敏感信息，将 `config.properties` 加入 `.gitignore`。
+#### 4. 线程安全问题 — Service 单例持有可变状态
 
-### 🟠 P1 — 高危（密码学或认证缺陷）
-
-#### 8.3 MD5 无盐哈希
-
-**位置**: `MD5Util.java`，被 `IndexController.userLogin()` (第 58 行) 和 `userRegister()` (第 119 行) 调用
-
-```java
-form.setPassword(MD5Util.md5(form.getPassword()));
-```
-
-**影响**: MD5 已被证明不安全，且无盐值意味着彩虹表攻击可直接命中。相同密码产生相同哈希值，批量破解成本极低。使用 main 方法测试表明 `md5("admin")` = `21232f297a57a5a743894a0e4a801fc3`，该值在公开彩虹表中可轻易反查。
-
-**修复**: 使用 BCrypt / SCrypt / PBKDF2 / Argon2 等慢哈希算法，每个密码使用随机盐值。
-
-#### 8.4 登录成功后 session 未重新生成
-
-**位置**: `IndexController.java` 第 61 行
+**位置**: `src/main/java/wxl/lt/service/impl/GetUserInfServiceImpl.java:27`
 
 ```java
-session.setAttribute("systemUser", gtUerInfService.selectUserLogin());
+@Service  // Spring 默认单例
+public class GetUserInfServiceImpl implements GetUerInfService {
+    @Autowired
+    private GetUserInfDao getUserInfDao;
+
+    private TbUser user = new TbUser();  // 共享可变状态！
 ```
 
-**影响**: 存在会话固定（Session Fixation）攻击风险。攻击者可预先设置一个 JSESSIONID 诱导受害者使用，登录后获取受害者会话。
+**竞态场景**:
+1. 用户A登录 → `user = userA`
+2. 用户B登录 → `user = userB`（覆盖A的user）
+3. 用户A调用 `selectUserLogin()` → 返回的是用户B的信息
+4. 可能导致越权访问和数据泄露
 
-**修复**: 登录成功后调用 `session.invalidate()` 销毁旧 Session 并重建。
+---
 
-#### 8.5 密码比较中的空指针风险
+### 🟠 高优先级（HIGH — 应尽快修复）
 
-**位置**: `GetUserInfServiceImpl.java` 第 39-40 行
+#### 5. Log4j 1.2.17 已知严重漏洞
+
+**位置**: `pom.xml:84`
+
+Log4j 1.2.17 于 2015 年停止维护，存在多个已知 CVE：
+- **CVE-2019-17571** (CVSS 9.8): SocketServer 反序列化漏洞
+- **CVE-2022-23307** (CVSS 8.8): CVE-2021-4104 修复不完整
+- **CVE-2022-23305** (CVSS 9.8): JDBCAppender SQL 注入
+- **CVE-2022-23302** (CVSS 8.8): JMSSink 反序列化
+
+虽然项目当前配置仅使用了 ConsoleAppender 和 DailyRollingFileAppender（未使用漏洞Appender），但框架本身已无安全支持。
+
+#### 6. 无暴力破解防护
+
+- 登录接口无频率限制（Rate Limiting）
+- 无验证码机制
+- 无账户锁定策略（连续失败 N 次）
+- 攻击者可以无限制尝试用户名/密码组合
+
+#### 7. 无 CSRF 防护
+
+- 无 Spring Security 的 CsrfFilter
+- 无同步令牌（Synchronizer Token）模式
+- 无 `SameSite` Cookie 属性
+- 所有 POST 接口（login, register）无 `Origin`/`Referer` 校验
+- 攻击者可构造恶意页面诱导已登录用户执行非自愿操作
+
+#### 8. @Validated 注解无效
+
+**位置**: `src/main/java/wxl/lt/controller/IndexController.java:56,98`
 
 ```java
-if (user != null) {
-    if (userLogin.getPassword().equals(form.getPassword())) {
+public PageMessage userLogin(@Validated UserForm form, ...)
 ```
 
-此处检查的是实例变量 `user`（第 27 行 `private TbUser user = new TbUser()`），而非局部变量 `userLogin`。这意味着 `user` 永不为 null，但 `userLogin`（DAO 查询结果）可能为 null。当 `getUserLoginInf()` 返回 null 时，第 40 行会产生 **`NullPointerException`**，而非返回 `LOGINNAME_ERROR`。这是一个潜在的逻辑 Bug。
+`UserForm` 类中没有任何 JSR-303 约束注解（无 `@NotNull`、`@Size`、`@Email` 等），`@Validated` 完全无效。用户名、密码等字段可以为空字符串直接传入后端。
 
-### 🟡 P2 — 中危（配置或设计缺陷）
+#### 9. 调试后门代码
 
-#### 8.6 Hibernate 自动 DDL 更新
+**位置**: `src/main/java/wxl/lt/utils/MD5Util.java:15-18`
 
-**位置**: `config.properties` 第 12 行
-
-```properties
-hibernate.hbm2ddl.auto=update
+```java
+public static void main(String[] args) {
+    String s = "admin";
+    System.out.println(md5(s));
+}
 ```
 
-**影响**: 生产环境中 `update` 策略可能导致表结构意外变更，`TbTest` 的 `id` 字段类型为 `String` 但标记 `@GeneratedValue(strategy=GenerationType.IDENTITY)`，这种不一致可能在更新时抛出异常。
+`MD5Util` 类可以独立运行（包含 main 方法），用于计算任意文本的 MD5 值。这是调试遗留代码，存在于生产代码中。
 
-**修复**: 生产环境设为 `validate` 或 `none`，使用数据库迁移工具（如 Flyway）管理 DDL。
+#### 10. 测试接口暴露
 
-#### 8.7 调试日志暴露查询细节
+**位置**: `src/main/java/wxl/lt/controller/IndexController.java:143-146`
 
-**位置**: `config.properties` 第 13-14 行
-
-```properties
-hibernate.show_sql=true
-hibernate.format_sql=true
+```java
+@RequestMapping(value = "/test", method = RequestMethod.GET)
+public void test(){
+    System.out.println(11111);
+}
 ```
 
-**影响**: SQL 语句输出到控制台，可能包含敏感数据（如用户密码哈希），日志泄露后增加攻击面。
+公开可访问的测试接口，使用 `System.out.println` 输出，属于开发调试代码遗留。
 
-**修复**: 生产环境关闭 `show_sql`，或使用 Log4j 级别做区分。
+---
 
-#### 8.8 第三方追踪脚本
+### 🟡 中优先级（MEDIUM）
 
-**位置**: `login.jsp` 第 255-257 行
+#### 11. 第三方统计脚本 HTTP 引用
+
+**位置**: `src/main/webapp/WEB-INF/view/login.jsp:254-257`
 
 ```html
 <div style="display: none">
@@ -457,170 +728,151 @@ hibernate.format_sql=true
 </div>
 ```
 
-**影响**: (1) 加载第三方非 HTTPS 脚本存在中间人攻击风险；(2) 用户访问数据泄露至第三方统计平台；(3) 如果 CNZZ 账户已废弃或被接管，可能被注入恶意代码。
+- 使用 HTTP（非 HTTPS）协议加载外部 JS 脚本
+- 存在中间人攻击（MITM）风险
+- 攻击者可劫持该脚本注入恶意 JS 代码（XSS）
+- 引用的统计服务（CNZZ）可能已变更或不可用
 
-**修复**: 移除或替换为自建统计，如必需则使用 HTTPS。
+#### 12. Session 固定攻击风险
 
-#### 8.9 弱密码验证
+登录成功后未调用 `session.invalidate()` 也未轮换 Session ID（如 Spring Security 的 `SessionFixationProtectionStrategy`）。攻击者可通过固定 Session ID 劫持用户会话。
 
-**位置**: `login.js` 第 28-32 行（**已注释**）和 `login.jsp` 第 180-182 行（**HTML 初始隐藏**）
+#### 13. SecurityInterceptor 拦截逻辑问题
 
-```javascript
-// 前端校验已注释:
-// var userName = $("input[name='userName']").val();
-// if(userName.length < 5){
-//     $("#userNameError").show();
-//     return false;
-// }
+**位置**: `src/main/java/wxl/lt/framework/interceptors/SecurityInterceptor.java:62`
+
+```java
+String url = requestUri.substring(contextPath.length());
 ```
 
-```html
-<!-- 错误提示标签默认隐藏: display: none -->
-<label id="userNameError" style="display: none;">
-    <span style="color: red;">*用户名长度为6-10位!</span>
-</label>
-```
+- 若 `contextPath` 为空字符串则正常；若部署在非根路径可能产生异常
+- 白名单仅包含 `/index/login` 和 `/index/userLogin`，但注册接口 `/index/userRegister` 未明确加入白名单
+- 依赖 URL 前缀 `/index/login` 匹配才能放行注册请求（注册路径不包含 login 子串）
+- 实际上注册接口无 session 验证即可访问，可能是期望行为但未在配置中明确体现
 
-**影响**: 注册时无任何密码长度或复杂度校验（前端已注释，后端无校验），用户可设置弱密码如 `1`。
+#### 14. 无 HTTPS 安全传输
 
-### 🟢 P3 — 低危（代码质量问题）
+`web.xml` 中未配置 `<transport-guarantee>CONFIDENTIAL</transport-guarantee>`，登录过程中用户名/密码通过 HTTP 明文传输。
 
-#### 8.10 拼写错误
+#### 15. password 字段长度不足
 
-| 位置 | 错误 | 正确 | 说明 |
-|------|------|------|------|
-| `GetUerInfService.java` (文件名) | `GetUerInfService` | `GetUserInfService` | 接口命名少了个 `s` |
-| `GetUserInfDaoImpl.java` 第 45 行 | `System.out.println("注册失败")` | 使用 `logger.error()` | 异常时用 System.out |
-| `StringUtil.java` 大面积 | `StringBuffer` | `StringBuilder` | 非线程安全场景应使用 StringBuilder |
-| `GlobalConstant.java` 第 8 行 | `UPLOAD_FAILE` | `UPLOAD_FAIL` | 状态码拼写错误 |
+`TbUser.password` 映射为 `VARCHAR(50)`，仅够存储 32 位 MD5。若替换为 BCrypt（密文约 60 字符），需扩展字段长度。
 
-#### 8.11 实体设计不一致
+#### 16. 数据库配置风险
 
-`TbTest.java` 存在两个设计问题：
-
-1. **未继承 `IdEntity`**：其他实体继承基类获得统一的 `Long` 类型 `id`，但 `TbTest` 自行定义 `id` 为 `String` 类型
-2. **类型冲突**：`id` 为 `String` 却标注 `@GeneratedValue(strategy=GenerationType.IDENTITY)`，`IDENTITY` 策略要求数字类型
-
-#### 8.12 注释代码过多
-
-多个文件中存在大段注释掉的代码（如 `IpUtils.java` 注释了旧版 IP 获取方法、`pom.xml` 注释了 ActiveMQ 配置、`GetUserInfDaoImpl.java` 注释了旧版 HQL），建议清理或使用 Git 历史追溯。
-
-#### 8.13 BaseDao 非泛型基类
-
-`BaseDao<T>` 未被抽象化或接口化，所有方法直接使用 `@Autowired SessionFactory`。子类 `GetUserInfDaoImpl` 通过 `@Repository` 注册 Bean，但 `BaseDao` 本身未标记任何 Spring 注解，不影响使用但设计上不够规范。
-
-#### 8.14 日志配置路径硬编码
-
-**位置**: `log4j.properties` 第 10 行
-
-```properties
-log4j.appender.D.File=${catalina.base}/webapps/jhwop/jhwop-error.log
-```
-
-日志文件路径写死为 `jhwop`，若部署名变更则路径失效，建议使用相对路径或通配。
-
-#### 8.15 TbTest 未纳入 JPA 持久化单元
-
-**位置**: `persistence.xml` 第 4-6 行列出了 `TbTest`、`TbUserInf`、`TbUser` 三个实体，但实际上 `IdEntity`（`@MappedSuperclass`）未列出（无需列出，这是正确的）。但三个实体中 `TbTest` 与其他实体的设计风格截然不同，可能是早期测试代码遗留。
-
-#### 8.16 Maven 仓库使用 HTTP 协议
-
-**位置**: `pom.xml` 第 18、27、34 行
-
-```xml
-<url>http://repo1.maven.org/maven2</url>
-<url>http://code.alibabatech.com/mvn/releases/</url>
-```
-
-使用 HTTP 而非 HTTPS 的 Maven 仓库存在依赖包被篡改的中间人攻击风险，且阿里旧 Maven 仓库 `code.alibabatech.com` 可能已不可用。
+- `hibernate.hbm2ddl.auto=update` — 生产环境可能意外修改表结构
+- `hibernate.show_sql=true` — 日志中打印完整 SQL（含用户敏感数据）
 
 ---
 
-## 九、改进建议
+### 🟢 低优先级（LOW）
 
-### 9.1 安全加固（优先级最高）
+#### 17. TbTest 实体 String ID 类型 Bug
 
-1. **立即修复 SQL 注入**：将所有 HQL 拼接改为参数化查询，使用 `BaseDao` 已有的 `Map<String, Object>` 重载方法
-2. **密码算法升级**：将 MD5 替换为 BCrypt（推荐 jBCrypt 或 Spring Security Crypto），每个密码加随机盐
-3. **移除硬编码凭据**：数据库密码使用 Jasypt 加密或环境变量 `System.getenv()` 读取
-4. **会话安全**：登录成功后 `invalidate()` 旧会话并重新生成；配置 Cookie 的 `HttpOnly` 和 `Secure` 属性
-5. **添加 CSRF Token**：在表单中嵌入随机 Token，后端拦截器验证
+**位置**: `src/main/java/wxl/lt/model/TbTest.java:24-28`
 
-### 9.2 输入校验
-
-6. **后端参数校验**：使用 Hibernate Validator（`@NotNull`, `@Size`, `@Email`, `@Pattern`）对 `UserForm` 字段做声明式校验，替换当前无实际校验逻辑的 `@Validated` 注解
-7. **密码强度策略**：要求最小 8 位，包含大小写字母、数字、特殊字符中至少两类
-
-### 9.3 代码质量
-
-8. **统一日志输出**：将 `System.out.println` 和 `e.printStackTrace()` 替换为 SLF4J `logger.error()`
-9. **清理注释代码**：移除大段注释，依赖 Git 历史
-10. **修复拼写错误**：重命名 `GetUerInfService` → `GetUserInfService`，`UPLOAD_FAILE` → `UPLOAD_FAIL`
-11. **统一实体设计**：`TbTest` 继承 `IdEntity` 或移除 `@GeneratedValue` 注解
-12. **配置外部化**：日志路径使用相对路径或 `${catalina.base}/logs/` 标准目录
-
-### 9.4 运维与部署
-
-13. **生产环境关闭** `hibernate.show_sql` 和 `hibernate.format_sql`
-14. **DDL 策略** `hibernate.hbm2ddl.auto` 从 `update` 改为 `validate`
-15. **添加 `.gitignore`**：排除 `config.properties`（含密码）、Eclipse `.settings/`、`target/` 目录
-16. **增加健康检查端点**：`/health` 返回数据库连接状态
-17. **Maven 仓库升级为 HTTPS**：避免依赖包篡改风险
-
-### 9.5 架构演进
-
-18. **前后端分离**：当前 JSP + jQuery 混合架构可迁移为 Vue/React SPA + RESTful API
-19. **引入 Spring Security**：替代手写 `SecurityInterceptor`，获得更完善的安全框架支持
-20. **JWT 无状态认证**：替代 Session 认证，便于水平扩展
-21. **单元测试覆盖**：当前 `pom.xml` 配置 `skipTests=true`，应编写 Service/DAO 层测试
-
----
-
-## 十、项目扩展潜力
-
-- `pom.xml` 中已引入 **Aliyun ONS**（消息队列）依赖，暗示规划了异步消息处理能力
-- `pom.xml` 中已引入 **Apache Axis**（WebService）和 **Apache POI**（Excel），具备与第三方系统对接和报表导出基础
-- `pom.xml` 注释了 ActiveMQ 配置，说明曾考虑 JMS 消息方案
-- `config.properties` 中定义了文件上传相关配置（类型白名单、大小限制、上传目录），文件管理模块已有基础
-- `StringUtil.java` 提供了丰富的工具方法（日期转换、条形码生成、随机数等），可直接复用
-- `IpUtils.java` 支持多级代理 IP 获取，适合部署在反向代理后
-
----
-
-## 十一、版本历史与构建信息
-
-| 属性 | 值 |
-|------|-----|
-| GroupId | com.jhw |
-| ArtifactId | jhwop |
-| Version | 0.0.1-SNAPSHOT |
-| 最终 WAR 名 | jhwop.war |
-| Java 编译版本 | 1.7 |
-| 项目编码 | UTF-8 |
-
-**构建命令**:
-```bash
-mvn clean package    # 打包为 jhwop.war
-mvn test             # 运行测试（当前 skipTests=true）
+```java
+@Id
+@GeneratedValue(strategy=GenerationType.IDENTITY)
+@Column(unique=true, nullable=false)
+public String getId() { return this.id; }
 ```
 
-**最近 Git 提交**:
-| 提交哈希 | 说明 |
-|---------|------|
-| `fdc59ee` | docs: comprehensive code analysis README by Claude Code |
-| `905030d` | docs: add comprehensive code analysis README (from Claude Code analysis) |
-| `a8bd6c6` | docs: add comprehensive code analysis README |
-| `65781ac` | Add README.md |
-| `b7a4414` | 测试3 |
+`String` 类型主键与 `GenerationType.IDENTITY`（数值自增）冲突。应改为继承 `IdEntity` 使用 `Long` 类型。
+
+#### 18. 接口名拼写错误
+
+**位置**: `src/main/java/wxl/lt/service/GetUerInfService.java`
+
+接口名 `GetUerInfService` → 正确为 `GetUserInfService`（"Uer" → "User"）。同样传播到 `IndexController.java:36`：`private GetUerInfService gtUerInfService`（变量名缩写也丢失了 's'）。
+
+#### 19. UserForm 与 PageMessage 职责重叠
+
+`UserForm.java` 包含响应字段（`errorMsg`, `success`, `list`, `flag`），与 `PageMessage` 的职责高度重叠。UserForm 应只关注输入数据绑定。
+
+#### 20. System.out.println 用于生产日志
+
+多处使用 `System.out.println` 替代日志框架：
+- `IndexController.java:145`: `System.out.println(11111);`
+- `GetUserInfDaoImpl.java:45`: `System.out.println("注册失败");`
+
+无法通过 Log4j 管理，无法按级别过滤，无法输出到文件。
+
+#### 21. Thumbs.db 等无用文件已提交
+
+- `src/main/webapp/assets/avatars/Thumbs.db`
+- `src/main/webapp/assets/css/images/Thumbs.db`
+
+Windows 缩略图缓存文件，不应提交到 Git 仓库。
+
+#### 22. 缺少单元测试
+
+- `maven-surefire-plugin` 配置了 `skipTests=true`
+- `src/test/java/` 目录为空，无任何测试用例
+
+#### 23. web.xml 静态资源映射冗余
+
+14 个 `default` servlet-mapping 逐个映射静态文件扩展名（`.css`, `.js`, `.png`, `.gif`, `.jpg`, `.ico`, `.doc`, `.xls`, `.docx`, `.xlsx`, `.txt`, `.swf`, `.woff`, `.woff2`, `.ttf`），应简化为 Spring MVC 的 `<mvc:resources>` 配置。
+
+#### 24. 无 SQL 慢查询监控配置
+
+Druid 连接池的 `filters=stat` 已启用，但未配置慢查询阈值（`connectionProperties` 中的 `druid.stat.slowSqlMillis`），无法有效监控慢查询。
+
+#### 25. JDK 1.7 已停止维护
+
+Java 7 于 2015 年公开更新终止，2019 年扩展支持终止。存在已知安全漏洞且无官方补丁。
 
 ---
 
-> 本文件由 Claude Code 自动生成，基于对 `jhwop` 项目全部源码文件（18 个 Java 源文件、5 个 XML 配置文件、2 个 Properties 文件、4 个 JSP 文件、2 个 JS 文件、1 个 POM 文件）的完整阅读与分析。
+## 改进建议
 
-> 分析日期：2026-05-08
+### 第一阶段：安全加固（P0 — 立即修复，1周内）
 
-> 源码作者：wxlHonest、袁友林
+| # | 改进项 | 具体措施 | 影响范围 |
+|---|--------|----------|----------|
+| 1 | **修复 SQL 注入** | 将 `GetUserInfDaoImpl` 中所有 HQL 字符串拼接改为参数绑定（`get(String hql, Map params)`） | DAO 层 |
+| 2 | **修复登录绕过 Bug** | 将 `GetUserInfServiceImpl.java:40` 的 `if (user != null)` 改为 `if (userLogin != null)` | Service 层 |
+| 3 | **移除数据库凭据** | 从 `config.properties` 中移除明文密码，改用 JNDI 数据源或环境变量 + 外部配置 | 配置文件 |
+| 4 | **升级密码哈希** | 替换 MD5 为 BCrypt（推荐 jBCrypt 0.4），同步扩展 `password` 字段为 `VARCHAR(60)` | 工具类 + 表结构 |
+| 5 | **修复线程安全问题** | 将 `GetUserInfServiceImpl.user` 字段移除，改用 ThreadLocal 或方法内局部变量 | Service 层 |
+
+### 第二阶段：依赖升级与基础防护（P1 — 2周内）
+
+| # | 改进项 | 具体措施 |
+|---|--------|----------|
+| 6 | **升级日志框架** | 从 Log4j 1.2.17 迁移到 Logback 1.2.x+ 或 Log4j 2.x |
+| 7 | **添加 Spring Security** | 引入 Spring Security 替代手写 SecurityInterceptor，获得 CSRF/Session固定/记住我等安全特性 |
+| 8 | **添加验证码** | 登录和注册接口接入图形验证码（如 Google Kaptcha） |
+| 9 | **登录频率限制** | 基于 IP 或用户名的失败登录计数 + 锁定策略 |
+| 10 | **强制 HTTPS** | 在 web.xml 中添加 `<transport-guarantee>CONFIDENTIAL</transport-guarantee>` |
+| 11 | **移除第三方脚本** | 删除或使用 HTTPS 协议引用 CNZZ 统计脚本 |
+| 12 | **移除调试代码** | 删除 `MD5Util.main()`、`IndexController.test()`、`System.out.println` |
+
+### 第三阶段：架构优化（P2 — 1个月内）
+
+| # | 改进项 | 具体措施 |
+|---|--------|----------|
+| 13 | **前后端分离** | 将 JSP 视图层下线，后端改造为纯 RESTful API，前端完全迁移至 `ant-design-vue-jeecg/` |
+| 14 | **实现 RBAC** | 设计用户-角色-权限模型，在 SecurityInterceptor 中加入权限校验 |
+| 15 | **统一异常处理** | 添加 `@ControllerAdvice` 全局异常处理器，替代 `System.out.println` 和 try-catch |
+| 16 | **统一日志** | 全项目使用 SLF4J + Logback，按级别输出（ERROR/WARN/INFO/DEBUG） |
+| 17 | **外部化配置** | 使用 Spring 的 `@PropertySource` + 环境变量覆盖机制 |
+| 18 | **SQL 监控** | 配置 Druid 的慢查询阈值 `druid.stat.slowSqlMillis=5000` |
+| 19 | **Session 安全** | 配置 Session 超时时间、HttpOnly/Secure Cookie、登录后 Session ID 轮换 |
+
+### 第四阶段：代码质量与运维（P3 — 持续改进）
+
+| # | 改进项 | 具体措施 |
+|---|--------|----------|
+| 20 | **编写单元测试** | 补充 Service 层和 DAO 层单元测试，覆盖率 > 70% |
+| 21 | **修复 TbTest 实体** | 将 id 类型改为 Long 或继承 IdEntity |
+| 22 | **修复接口命名** | `GetUerInfService` → `GetUserInfService` |
+| 23 | **简化 web.xml** | 用 `<mvc:resources>` 替代 14 个静态资源 servlet-mapping |
+| 24 | **添加 .gitignore** | 忽略 `.settings/`、`Thumbs.db`、`*.class`、`target/`、敏感配置文件 |
+| 25 | **升级 JDK** | 从 JDK 1.7 升级到 JDK 17 LTS 或 21 LTS |
+| 26 | **集成静态分析** | CI/CD 管道中集成 SonarQube / SpotBugs 进行代码质量检测 |
+| 27 | **生产配置** | 修改 `hibernate.hbm2ddl.auto=validate`、`hibernate.show_sql=false` |
 
 ---
 
-**本文件由 Claude Code 自动生成**
+# 本文件由 Claude Code 自动生成
